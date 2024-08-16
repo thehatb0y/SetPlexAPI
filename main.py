@@ -317,8 +317,8 @@ def print_json_color(json_data):
 
 # Auth Setup
 subdomain = os.getenv('noraSub')
-token = os.getenv('r2_token')
-login = os.getenv('r2_login')
+token = os.getenv('token')
+login = os.getenv('login')
 
 # EG 1 Month Package - CXFFH2VVA
 # User Info Test Setup 
