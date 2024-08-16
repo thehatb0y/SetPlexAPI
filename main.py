@@ -2,6 +2,8 @@ import requests
 import random
 import json
 import os
+from rich import print_json
+from colorama import init, Fore, Style
 
 def create_user(subdomain, token, login, first_name, last_name, phone, email):
     url = f'https://{subdomain}.norago.tv/apex/v2/subscribers/create'
@@ -49,6 +51,60 @@ def search_subscriber(subdomain, token, login, email):
     response = requests.post(url, json=data)
     return response.json()
 
+def search_all(subdomain, token, login):
+    url = f'https://{subdomain}.norago.tv/apex/v2/networks/subscribers/get'
+    network_info = get_network_info(subdomain, token, login)
+    networkID = network_info["content"][0]["id"]  # Extrai o networkID do retorno de get_network_info
+    
+    all_users = []  # Lista para armazenar todos os usuários de todas as páginas
+    
+    # Inicia a primeira requisição para obter o total de páginas
+    page = 0
+    payload = json.dumps({
+        "auth": {
+            "token": token,
+            "login": login
+        },
+        "pageRequest": {
+            "page": page
+        },
+        "networkId": networkID
+    })
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    
+    response = requests.post(url, headers=headers, data=payload)
+    data = response.json()
+    
+    # Verifica o total de páginas
+    total_pages = data["result"]["totalPages"]
+    
+    # Loop sobre todas as páginas
+    for page in range(total_pages):
+        payload = json.dumps({
+            "auth": {
+                "token": token,
+                "login": login
+            },
+            "pageRequest": {
+                "page": page
+            },
+            "networkId": networkID
+        })
+        
+        response = requests.post(url, headers=headers, data=payload)
+        data = response.json()
+        
+        # Adiciona os usuários da página atual à lista de todos os usuários
+        all_users.extend(data["result"]["content"])
+    
+    # Salva todos os usuários em um arquivo JSON
+    with open('all_users.json', 'w') as f:
+        json.dump(all_users, f, indent=4)
+
+    return f'Total de usuários coletados: {len(all_users)}'
+    
 def make_payment(subdomain, token, login, account_number, last_name, subscription_id):
     url = f'https://{subdomain}.norago.tv/apex/v2/payments/do'
     
@@ -255,11 +311,16 @@ def get_network_info(subdomain, token, login):
     # Retornar a estrutura de dados com as informações da rede
     return result.get('result', {})
 
-# Auth Setup
-subdomain = os.getenv('subdomain')
-token = os.getenv('token')
-login = os.getenv('login')
+def print_json_color(json_data):
+    # A função print_json do rich cuida da formatação e coloração automaticamente.
+    print_json(data=json_data)
 
+# Auth Setup
+subdomain = os.getenv('noraSub')
+token = os.getenv('r2_token')
+login = os.getenv('r2_login')
+
+# EG 1 Month Package - CXFFH2VVA
 # User Info Test Setup 
 first_name = 'IhGabeZ'
 last_name = 'Cord'
@@ -271,55 +332,58 @@ account_number = 'SGO300230'
 def main_menu():
     while True:
         # Criar o Menu
-        print("\n1. Create User")
-        print("2. Search Subscriber")
-        print("3. Make Payment")
-        print("4. Get Subscriber Info")
-        print("5. Remove Device")
-        print("6. Delete Subscriber")
-        print("7. Remove All Devices")
-        print("8. Renew All Activation Codes")
-        print("9. Get Packages Info")
-        print("10. Get Network Info")
-        print("11. Exit")
+        print(Fore.CYAN + Style.BRIGHT + "===== Menu Principal =====")
+        print(Fore.YELLOW + "1. " + Fore.WHITE + "Create User")
+        print(Fore.YELLOW + "2. " + Fore.WHITE + "Search Subscriber")
+        print(Fore.YELLOW + "3. " + Fore.WHITE + "Make Payment")
+        print(Fore.YELLOW + "4. " + Fore.WHITE + "Get Subscriber Info")
+        print(Fore.YELLOW + "5. " + Fore.WHITE + "Remove Device")
+        print(Fore.YELLOW + "6. " + Fore.WHITE + "Delete Subscriber")
+        print(Fore.YELLOW + "7. " + Fore.WHITE + "Remove All Devices")
+        print(Fore.YELLOW + "8. " + Fore.WHITE + "Renew All Activation Codes")
+        print(Fore.YELLOW + "9. " + Fore.WHITE + "Get Packages Info")
+        print(Fore.YELLOW + "10. " + Fore.WHITE + "Get Network Info")
+        print(Fore.YELLOW + "11. " + Fore.WHITE + "Search/Save All")
+        print(Fore.RED + "12. " + Fore.WHITE + "Exit")
+        print(Style.RESET_ALL)
         
-        choice = input("Escolha uma opção (1-11): ")
+        choice = input(Fore.GREEN + "Escolha uma opção (1-12): " + Style.RESET_ALL)
         
         if choice == '1':
             # Criar Usuário
             first_name, last_name, phone, email = input("Digite first_name last_name phone email: ").split()
             response = create_user(subdomain, token, login, first_name, last_name, phone, email)
-            print(json.dumps(response, indent=4))
+            print_json_color(response)
         
         elif choice == '2':
             # Buscar Assinante
             email = input("Digite email: ")
             response = search_subscriber(subdomain, token, login, email)
-            print(json.dumps(response, indent=4))
+            print_json_color(response)
         
         elif choice == '3':
             # Fazer Pagamento
             account_number, last_name, subscription_id = input("Digite account_number last_name subscription_id: ").split()
             response = make_payment(subdomain, token, login, account_number, last_name, subscription_id)
-            print(json.dumps(response, indent=4))
+            print_json_color(response)
         
         elif choice == '4':
             # Obter Informações do Assinante
             last_name, account_number = input("Digite last_name account_number: ").split()
             response = get_sub_info(subdomain, token, login, last_name, account_number)
-            print(json.dumps(response, indent=4))
+            print_json_color(response)
         
         elif choice == '5':
             # Remover Dispositivo
             last_name, account_number, device_number = input("Digite last_name account_number device_number: ").split()
             response = remove_device(subdomain, token, login, last_name, account_number, device_number)
-            print(json.dumps(response, indent=4))
+            print_json_color(response)
         
         elif choice == '6':
             # Excluir Assinante
             last_name, account_number = input("Digite last_name account_number: ").split()
             response = delete_subscriber(subdomain, token, login, last_name, account_number)
-            print(json.dumps(response, indent=4))
+            print_json_color(response)
         
         elif choice == '7':
             # Remover Todos os Dispositivos
@@ -338,14 +402,19 @@ def main_menu():
         elif choice == '9':
             # Obter Informações dos Pacotes
             response = get_packages_info(subdomain, token, login)
-            print(json.dumps(response, indent=4))
+            print_json_color(response)
         
         elif choice == '10':
             # Obter Informações da Rede
             response = get_network_info(subdomain, token, login)
-            print(json.dumps(response, indent=4))
-        
+            print_json_color(response)
+
         elif choice == '11':
+            # Obter Informações da Rede
+            response = search_all(subdomain, token, login)
+            print_json_color(response)
+
+        elif choice == '12':
             # Sair
             break
         
