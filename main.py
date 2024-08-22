@@ -320,7 +320,7 @@ subdomain = os.getenv('noraSub')
 token = os.getenv('token')
 login = os.getenv('login')
 
-# EG 1 Month Package - CXFFH2VVA
+
 # User Info Test Setup 
 first_name = 'IhGabeZ'
 last_name = 'Cord'
